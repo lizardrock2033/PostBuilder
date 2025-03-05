@@ -143,7 +143,7 @@ namespace PostBuilder
                                         .Descendants("ProgramCode").FirstOrDefault();
 
                 if (programCode != null)
-                    programCode.Value = richTextBoxCode.Text;
+                    programCode.ReplaceNodes(new XCData(richTextBoxCode.Text));
             }
 
             SaveChanges();
