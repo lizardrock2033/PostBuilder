@@ -1,4 +1,4 @@
-using System.Xml;
+п»їusing System.Xml;
 using System.Xml.Linq;
 
 namespace PostBuilder
@@ -6,41 +6,49 @@ namespace PostBuilder
     public partial class MainForm : Form
     {
         private XDocument xmlDoc;
-        private string xmlFilePath = "STPostprocessor.xml";
+        private string xmlFilePath = string.Empty;
+        private string tempFilePath = string.Empty;
+        private List<string> commands = new List<string>();
 
         public MainForm()
         {
             InitializeComponent();
-            LoadXml();
+            LoadXml(false);
         }
 
-        private void LoadXml()
+        private void LoadXml(bool forceLoad)
         {
             try
             {
-                xmlDoc = XDocument.Load(xmlFilePath);
-                var commands = xmlDoc.Descendants("CLDCommandID").Select(x => x.Value).ToList();
-                var allCommands = new List<string>();
-                allCommands.AddRange(commands);
-                allCommands.Add("< Добавить команду >");
-                listBoxCommands.DataSource = allCommands;
+                tempFilePath = Path.GetTempPath() + "pbTempPost.sppx";
+                if (File.Exists(xmlFilePath) || File.Exists(tempFilePath))
+                {                    
+                    if (!File.Exists(tempFilePath) || forceLoad)
+                        File.Copy(xmlFilePath, tempFilePath, true);
+
+                    xmlDoc = XDocument.Load(tempFilePath);
+                    commands = xmlDoc.Descendants("CLDCommandID").Select(x => x.Value).ToList();                    
+                }
+                listBoxCommands.DataSource = commands;
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Ошибка загрузки XML: " + ex.Message);
+                MessageBox.Show("РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё РїРѕСЃС‚Р°: " + ex.Message);
             }
+        }
+
+        private void SaveChanges()
+        {
+            if (!string.IsNullOrEmpty(tempFilePath))
+                xmlDoc.Save(tempFilePath);
+
+            buttonSaveCommandChanges.Enabled = false;
         }
 
         private void listBoxCommands_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (listBoxCommands.SelectedItem != null)
             {
-                if (listBoxCommands.SelectedItems[0]?.ToString() == "< Добавить команду >")
-                {
-                    listBoxCommands.ClearSelected();
-                    AddNewCommand();
-                }
-
                 string selectedCommand = listBoxCommands.SelectedItem?.ToString() ?? "";
                 var programCode = xmlDoc.Descendants("CLDCommand")
                     .FirstOrDefault(x => x.Element("CLDCommandID")?.Value == selectedCommand)?
@@ -52,20 +60,7 @@ namespace PostBuilder
 
         private void buttonSave_Click(object sender, EventArgs e)
         {
-            //if (listBoxCommands.SelectedItem != null)
-            //{
-            //    string selectedCommand = listBoxCommands.SelectedItem?.ToString() ?? "";
-            //    var programCode = xmlDoc.Descendants("CLDCommand")
-            //        .FirstOrDefault(x => x.Element("CLDCommandID")?.Value == selectedCommand)?
-            //        .Descendants("ProgramCode").FirstOrDefault();
-
-            //    if (programCode != null)
-            //    {
-            //        programCode.Value = richTextBoxCode.Text;
-            //        xmlDoc.Save(xmlFilePath);
-            //        MessageBox.Show("Изменения сохранены!");
-            //    }
-            //}
+            SaveChanges();
 
             SaveFileDialog saveFileDialog = new SaveFileDialog();
             saveFileDialog.Filter = "SPPX files (*.sppx)|*.sppx|XML files (*.xml)|*.xml|Text files (*.txt)|*.txt|All files (*.*)|*.*";
@@ -78,51 +73,111 @@ namespace PostBuilder
             }
         }
 
-        private void AddNewCommand()
+        //private void AddNewCommand()
+        //{
+        //    string newCommandID = Microsoft.VisualBasic.Interaction.InputBox("Р’РІРµРґРёС‚Рµ CLDCommandID:", "Р”РѕР±Р°РІР»РµРЅРёРµ РєРѕРјР°РЅРґС‹", "");
+
+        //    if (string.IsNullOrWhiteSpace(newCommandID))
+        //        return;
+
+        //    XElement? existingNode = xmlDoc.Descendants("CLDCommandID").SingleOrDefault(x => x.Value == newCommandID);
+        //    if (existingNode != null)
+        //    {
+        //        MessageBox.Show("РўР°РєР°СЏ РєРѕРјР°РЅРґР° СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚!", "РћС€РёР±РєР°", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        //        return;
+        //    }
+
+        //    XElement newCommand = new XElement("CLDCommand",
+        //        new XElement("CLDCommandID", newCommandID),
+        //        new XElement("Handlers",
+        //            new XElement("Program",
+        //                new XElement("Enabled", "True"),
+        //                new XElement("ProgramCode", new XCData($"program {newCommandID}\n\nend\n"))
+        //            )
+        //        )
+        //    );
+
+        //    xmlDoc.Element("STPostprocessor")?.Element("CLDCommandsHandlers")?.Add(newCommand);
+        //    xmlDoc.Save(xmlFilePath);
+        //    LoadXml(true);
+        //}
+
+        //private void listBoxCommands_DoubleClick(object sender, EventArgs e)
+        //{
+        //    if (listBoxCommands.SelectedItems[0]?.ToString() != "< Р”РѕР±Р°РІРёС‚СЊ РєРѕРјР°РЅРґСѓ >")
+        //    {
+        //        string newCommandID = Microsoft.VisualBasic.Interaction.InputBox("Р’РІРµРґРёС‚Рµ РЅРѕРІС‹Р№ CLDCommandID:", "РџРµСЂРµРёРјРµРЅРѕРІР°РЅРёРµ", "");
+        //        if (!string.IsNullOrEmpty(newCommandID))
+        //        {
+        //            XElement? editNode = xmlDoc.Descendants("CLDCommandID").SingleOrDefault(x => x.Value == listBoxCommands.SelectedItems[0]?.ToString());
+        //            if (editNode != null)
+        //            {
+        //                editNode.Value = newCommandID;
+        //                xmlDoc.Save(xmlFilePath);
+        //                LoadXml(false);
+        //            }
+        //        }
+        //    }
+        //}
+
+        private void buttonChoosePattern_Click(object sender, EventArgs e)
         {
-            string newCommandID = Microsoft.VisualBasic.Interaction.InputBox("Введите CLDCommandID:", "Добавление команды", "");
-
-            if (string.IsNullOrWhiteSpace(newCommandID))
-                return;
-
-            XElement? existingNode = xmlDoc.Descendants("CLDCommandID").SingleOrDefault(x => x.Value == newCommandID);
-            if (existingNode != null)
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            openFileDialog.Filter = "SPPX files (*.sppx)|*.sppx|XML files (*.xml)|*.xml|Text files (*.txt)|*.txt";
+            openFileDialog.Title = "Р—Р°РіСЂСѓР·РёС‚СЊ С€Р°Р±Р»РѕРЅ РґР»СЏ СЂР°Р±РѕС‚С‹";
+            openFileDialog.DefaultExt = ".sppx";
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
-                MessageBox.Show("Такая команда уже существует!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
+                xmlFilePath = openFileDialog.FileName;
+                LoadXml(true);
             }
-
-            XElement newCommand = new XElement("CLDCommand",
-                new XElement("CLDCommandID", newCommandID),
-                new XElement("Handlers",
-                    new XElement("Program",
-                        new XElement("Enabled", "True"),
-                        new XElement("ProgramCode", new XCData($"program {newCommandID}\n\nend\n"))
-                    )
-                )
-            );
-
-            xmlDoc.Element("STPostprocessor")?.Element("CLDCommandsHandlers")?.Add(newCommand);
-            xmlDoc.Save(xmlFilePath);
-            LoadXml();
         }
 
-        private void listBoxCommands_DoubleClick(object sender, EventArgs e)
+        private void richTextBoxCode_Leave(object sender, EventArgs e)
         {
-            if (listBoxCommands.SelectedItems[0]?.ToString() != "< Добавить команду >")
+            if (listBoxCommands.SelectedItem != null)
             {
-                string newCommandID = Microsoft.VisualBasic.Interaction.InputBox("Введите новый CLDCommandID:", "Переименование", "");
-                if (!string.IsNullOrEmpty(newCommandID))
+                string selectedCommand = listBoxCommands.SelectedItem?.ToString() ?? "";
+                var programCode = xmlDoc.Descendants("CLDCommand")
+                                        .FirstOrDefault(x => x.Element("CLDCommandID")?.Value == selectedCommand)?
+                                        .Descendants("ProgramCode").FirstOrDefault();
+
+                if (programCode != null)
+                    programCode.Value = richTextBoxCode.Text;
+            }
+
+            SaveChanges();
+        }
+
+        private void richTextBoxCode_TextChanged(object sender, EventArgs e)
+        {
+            if (listBoxCommands.SelectedItem != null)
+            {
+                string selectedCommand = listBoxCommands.SelectedItem?.ToString() ?? "";
+                var programCode = xmlDoc.Descendants("CLDCommand")
+                                        .FirstOrDefault(x => x.Element("CLDCommandID")?.Value == selectedCommand)?
+                                        .Descendants("ProgramCode").FirstOrDefault();
+                if (programCode != null && programCode.Value.Trim() != richTextBoxCode.Text)
                 {
-                    XElement? editNode = xmlDoc.Descendants("CLDCommandID").SingleOrDefault(x => x.Value == listBoxCommands.SelectedItems[0]?.ToString());
-                    if (editNode != null)
-                    {
-                        editNode.Value = newCommandID;
-                        xmlDoc.Save(xmlFilePath);
-                        LoadXml();
-                    }
+                    buttonSaveCommandChanges.Enabled = true;
+                    buttonSaveCommandChanges.ForeColor = Color.Red;
+                }
+                else
+                {
+                    buttonSaveCommandChanges.Enabled = false;
+                    buttonSaveCommandChanges.ForeColor = Color.Black;
                 }
             }
+        }
+
+        private void buttonSaveCommandChanges_Click(object sender, EventArgs e)
+        {
+            richTextBoxCode_Leave(null, null);
+        }
+
+        private void textBoxCommandsFilter_KeyUp(object sender, KeyEventArgs e)
+        {
+            listBoxCommands.DataSource = commands.Where(x => x.Contains(textBoxCommandsFilter.Text)).ToList();
         }
     }
 }
